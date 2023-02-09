@@ -89,3 +89,97 @@ while vs.isOpened():
 print(np.shape(angle_list)) 
 np.savetxt(dataname,angle_list)
 cv2.destroyAllWindows()
+
+
+
+# below is the plot code
+############################################################################################
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd 
+
+end0=np.array([1011,1490,1791,1983,2525,969,2218,1519])
+split_list=np.array([804,1264,1567,1795,2335,773,1109,801])
+start_list=end0-split_list
+
+ 
+num=2
+filepath="D:/dl/2212129new/pm221129/"
+file = filepath+"angle_"+str(num)+".txt"
+angle0=np.loadtxt(file )
+
+def preprossion_angle(angle_list,num):
+    angle_new=np.zeros((5,split_list[num-1]))
+    N=len(angle_list)
+    for i in range(1,N-1):
+        if angle_list[i] > 100 or angle_list[i] <= 0 :
+            angle_list[i]=angle_list[i-1]
+        if abs(angle_list[i]-angle_list[i-1]) > 10 and abs(angle_list[i+1]-angle_list[i]) > 10 :
+            angle_list[i]=int((angle_list[i+1]+angle_list[i-1])*0.5)
+    for j in range(5):
+
+        start=start_list[num-1]+split_list[num-1]*j
+        end=start+split_list[num-1]
+        print(np.shape(angle_new))
+        angle_new[j,:]=angle_list[start:end]
+
+        #Find the index of the angle suddendly changes
+        lenG=len(angle_new[j,:])
+        angle90_num=list([])
+        for k in range(int(lenG*0.4),lenG):
+            if angle_new[j,k-1]<20 and angle_new[j,k]>80:
+                angle90_num.append(k)
+        angle90_num.append(lenG)
+        print(angle90_num)
+
+        # Piece together the angles
+        for item in range(len(angle90_num)-1):
+            angle_new[j,angle90_num[item]:angle90_num[item+1]] = angle_new[j,angle90_num[item]:angle90_num[item+1]]-90*(item+1)
+    return angle_new
+
+def get_pressure(angle_list):
+    # 1 kpa 283 ms
+    # 3000ms start
+    # fps 50
+    N=len(angle_list)
+    maxpressure=int((N/50-3)/0.283)
+    pressure=np.hstack((np.zeros(10),np.linspace(0,maxpressure,maxpressure+1)))
+    index=np.int0(pressure*N/len(pressure))
+    angle=angle_list[index]
+    angle=90-angle
+    P=pressure
+    return P,angle
+
+
+
+def get_meam_error(x,y):
+    meanx=np.mean(x,axis=0)
+    meany=np.mean(y,axis=0)
+    errorx=np.row_stack((meanx-np.min(x,axis=0),np.max(x,axis=0)-meanx))
+    errory=np.row_stack((meany-np.min(y,axis=0),np.max(y,axis=0)-meany))
+    return meanx, meany, errorx, errory
+
+data=np.array([])
+plt.plot(angle0)
+a=plt.gca()
+plt.legend(loc='upper left')
+plt.xlabel('Pressure (KPa)')
+plt.ylabel('Angle (degree)')
+plt.show()
+
+
+
+
+import pandas as pd
+
+data = pd.DataFrame(data.T)
+writer = pd.ExcelWriter(filepath+"angle_"+str(num)+".xlsx")		# write to excel
+data.to_excel(writer, 'Sheet1', float_format='%.3f')		
+writer.save()
+writer.close()
+
+
+
+
+
